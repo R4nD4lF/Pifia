@@ -4,6 +4,7 @@ using UnityEngine;
 using TMPro;
 using System;
 using Unity.VisualScripting;
+using UnityEngine.Analytics;
 
 public class ScoreScript : MonoBehaviour
 {
@@ -25,10 +26,10 @@ public class ScoreScript : MonoBehaviour
     Dictionary<int, int> faceCounts = new Dictionary<int, int>();
 
     Dictionary<int, int> scoreCounts = new Dictionary<int, int>();
-    public int _totalScore = 0, _bankScore = 0, _accumulatedBank;
+    public int _totalScore = 0, _bankScore = 0, _accumulatedBank = 0, _straightScore = 0;
     private int _diceStillRolling, round = 0;
 
-    public bool _isRolling = false , _isNewDiceInBankScore = false;
+    public bool _isRolling = false , _isNewDiceInBankScore = false, _isStraight = false;
 
     
     void Start()
@@ -45,18 +46,26 @@ public class ScoreScript : MonoBehaviour
     {
         if(Input.GetButtonDown("Jump") && !_isRolling){
             if(_selectedDices.Count != 0){
-                int nDices = _selectedDices.Count()-1;
-                _accumulatedBank = _bankScore;
+                int nDices = _selectedDices.Count();
+                _accumulatedBank += _bankScore;
                 foreach(DiceScript dice in _selectedDices){
                     dice.isScored = true;
                     dice.isSelected = false;
                     dice.isSelectable = false;
                     dice.body.isKinematic = true;
-                    dice.transform.localPosition = new Vector3(-21.31f + (2 * nDices),3.39f,8.19f - (2 * round-1));
+                    dice.transform.localPosition = new Vector3(-21.31f + (2 * nDices-1),3.39f,8.19f - (2 * round-1));
                     _playableDices.Remove(dice);
                     nDices --;
                 }
                 _dices = _playableDices.ToArray();
+            }
+            if(!_dices.Any()){
+                _dices = _allDices;
+                _playableDices = _dices.ToList();
+                foreach(DiceScript dice in _dices){
+                    dice.resetPosition();
+                }
+                round = 0;
             }
             _centerMessageTMP.text = "";
             _stayButton.SetActive(false);
@@ -85,7 +94,9 @@ public class ScoreScript : MonoBehaviour
         CheckSelectable(result,dice); 
         if (_diceStillRolling != 0) return;
         _isRolling = false;
-
+        if(_dices.Count() >=5) {
+            _isStraight = HasStraight();
+        }
         CheckPifia();
 
     }
@@ -118,6 +129,25 @@ public class ScoreScript : MonoBehaviour
                 scoreCounts[dice.diceFaceNum] = 1;
             }
         }
+        if(_isStraight){
+            _straightScore = GetStraightScore();
+            _bankScore = _straightScore;
+            if(_straightScore != 0){
+                var faceNumsToRemove = _selectedDices.Select(d => d.diceFaceNum).Distinct();
+
+                foreach (int faceNum in faceNumsToRemove)
+                {
+                    scoreCounts[faceNum]--; 
+                }
+
+                DiceScript[] remainingDices = _dices.Except(_selectedDices).ToArray();
+
+                if(remainingDices.Any())
+                    if(remainingDices[0].diceFaceNum != 5 && remainingDices[0].diceFaceNum != 1 && remainingDices[0].diceFaceNum != 6)
+                        remainingDices[0].isSelectable = false;
+            }
+        }
+
         foreach(int key in scoreCounts.Keys){
 
             if(scoreCounts[key] >= 3){
@@ -133,8 +163,9 @@ public class ScoreScript : MonoBehaviour
                 _bankScore += scoreCounts[key] * 50;
             }
         }
+        
         _isNewDiceInBankScore = false;
-        _bankScoreTMP.text = "BankScore: "+(_accumulatedBank + _bankScore).ToString();
+        _bankScoreTMP.text = "Bank Score: "+(_accumulatedBank + _bankScore).ToString();
     }
 
     void CheckPifia(){
@@ -147,7 +178,7 @@ public class ScoreScript : MonoBehaviour
         }
         if(pifia){
             _centerMessageTMP.color = Color.darkRed;
-            _centerMessageTMP.text = "¡PIFIA!";
+            _centerMessageTMP.text = "¡¡PIFIA!!";
             ResetFullValues();
 
         }else{
@@ -159,21 +190,26 @@ public class ScoreScript : MonoBehaviour
         faceCounts.Clear();
         _selectedDices.Clear();
         scoreCounts.Clear();
+        _isStraight = false;
+        _straightScore = 0;
         _centerMessageTMP.text = "";
     }
-    void ResetFullValues(){
+    public void ResetFullValues(){
         faceCounts.Clear();
         _selectedDices.Clear();
         scoreCounts.Clear();
         _bankScore = 0;
         _accumulatedBank = 0;
+        _straightScore = 0;
+        _isStraight = false;
         round = 0;
-        _bankScoreTMP.text = "BankScore: "+_accumulatedBank.ToString();
+        _bankScoreTMP.text = "Bank Score: "+_accumulatedBank.ToString();
         _dices = _allDices;
         _playableDices = _dices.ToList();
         foreach(DiceScript dice in _dices){
             dice.transform.localPosition = dice.originalPosition;
             dice.transform.localScale = dice.originalScale;
+            dice.rend.material.color = dice.originalColor;
             dice.isRolling = false;
             dice.isScored = false;
             dice.isSelectable = false;
@@ -183,8 +219,35 @@ public class ScoreScript : MonoBehaviour
     }
 
 
-    void StayBankScore(){
-        _totalScore += _bankScore;
-        _totalScoreTMP.text = "Total Score" + _totalScore.ToString();
+    bool HasStraight()
+    {
+        var faceValues = _dices.Select(d => d.diceFaceNum).Distinct().OrderBy(x => x).ToList();
+
+        if (faceValues.Count == 5 && faceValues.SequenceEqual(new List<int> { 1, 2, 3, 4, 5 })
+        || faceValues.Count == 5 && faceValues.SequenceEqual(new List<int> { 2, 3, 4, 5, 6 })
+        || faceValues.Count == 6 && faceValues.SequenceEqual(new List<int> { 1, 2, 3, 4, 5, 6 })){
+            foreach(DiceScript dice in _dices){
+                dice.isSelectable=true;
+            }
+            return true;
+        }
+        return false;
+    }
+
+    int GetStraightScore()
+    {
+        var faceValues = _selectedDices.Select(d => d.diceFaceNum).Distinct().OrderBy(x => x).ToList();
+
+        if (faceValues.Count == 5 && faceValues.SequenceEqual(new List<int> { 1, 2, 3, 4, 5 }))
+            return 500;
+        
+
+        if (faceValues.Count == 5 && faceValues.SequenceEqual(new List<int> { 2, 3, 4, 5, 6 }))
+            return 750;
+
+        if (faceValues.Count == 6 && faceValues.SequenceEqual(new List<int> { 1, 2, 3, 4, 5, 6 }))
+            return 1500;
+        
+        return 0;
     }
 }

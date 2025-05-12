@@ -18,8 +18,8 @@ public class DiceScript : MonoBehaviour
 
 
     //Change dice parameters when selected
-    private Renderer rend;
-    private Color originalColor;
+    public Renderer rend;
+    public Color originalColor;
     public Color hoverColor = Color.yellow;
     public Color selectedColor = Color.green;
 
@@ -115,6 +115,11 @@ public class DiceScript : MonoBehaviour
         isSelected = false;
         rend.material.color = originalColor;
         transform.localScale = originalScale;
+    }
+
+    public void resetPosition(){
+        resetValues();
+        transform.localPosition = originalPosition;
     }
 
 }
