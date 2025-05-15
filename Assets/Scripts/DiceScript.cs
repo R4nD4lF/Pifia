@@ -1,7 +1,9 @@
 using System;
-using System.Linq;
+using System.Numerics;
 using UnityEngine;
+using Quaternion = UnityEngine.Quaternion;
 using Random = UnityEngine.Random;
+using Vector3 = UnityEngine.Vector3;
 
 [RequireComponent(typeof(Rigidbody))]
 public class DiceScript : MonoBehaviour
@@ -12,6 +14,8 @@ public class DiceScript : MonoBehaviour
     [SerializeField] float _force = 5f;
     [SerializeField] float _torque = 5f;
 
+    [SerializeField] public GameObject sparks;
+
     public int diceFaceNum;
 
     public bool isSelectable = false, isScored = false, isSelected = false, isRolling = false;
@@ -20,36 +24,64 @@ public class DiceScript : MonoBehaviour
     //Change dice parameters when selected
     public Renderer rend;
     public Color originalColor;
-    public Color hoverColor = Color.yellow;
-    public Color selectedColor = Color.green;
+
+    public Material originalMaterial;
+    public Material selectedMaterial;
 
     public Vector3 originalScale;
 
     public Vector3 originalPosition;
+    public Vector3 placedPosition;
 
     public ScoreScript scoreScript;
+
+    [SerializeField] public AudioSource colisionSound;
+    
+    [SerializeField] public AudioSource selectDiceSound;
+
+    [SerializeField] public AudioSource mouseOverDiceSound;
+
+    // Hovering and mouseover
+    public float scaleMultiplier = 1.1f;
+    public float scaleSpeed = 5f;
+    private bool isHovered = false;
 
     void Start()
     {
         body = GetComponent<Rigidbody>();
         rend = GetComponent<Renderer>();
         scoreScript = FindAnyObjectByType<ScoreScript>();
+        originalMaterial = rend.material;
         originalScale = transform.localScale;
         originalPosition = transform.localPosition;
         originalColor = rend.material.color;
         body.isKinematic = true;
         transform.rotation = new Quaternion(Random.Range(0,360), Random.Range(0,360),Random.Range(0,360),0);
     }
-    
+
+    void OnCollisionEnter(Collision collision)
+    {
+        if(collision.collider.CompareTag("Ground") && isRolling)
+            colisionSound.Play();
+    }
 
     void FixedUpdate()
     {
-        if(isScored){
-            rend.material.color = originalColor;
+        if (isSelectable)
+        {
+            Vector3 targetScale = isHovered ? originalScale * scaleMultiplier : originalScale;
+            transform.localScale = Vector3.Lerp(transform.localScale, targetScale, Time.deltaTime * scaleSpeed);
+        }
+        if (isScored)
+        {
+            rend.material = originalMaterial;
             transform.localScale = originalScale;
-        }else if(body.IsSleeping() && isRolling){
+            transform.Rotate(Vector3.up * 45f * Time.deltaTime, Space.World);
+        }
+        else if (body.IsSleeping() && isRolling)
+        {
             int result = GetFaceNum();
-            OnDiceStopped.Invoke(result,this);
+            OnDiceStopped.Invoke(result, this);
         }
     }
     public void RollDice(){
@@ -71,12 +103,15 @@ public class DiceScript : MonoBehaviour
         Transform upSide = null;
         float maxFace = -1;
 
-        foreach(Transform side in _diceSides){
+        placedPosition = transform.localPosition;
+
+        foreach (Transform side in _diceSides)
+        {
             float face = Vector3.Dot(side.up, Vector3.up);
 
             if (!(face > maxFace)) continue;
-                maxFace = face;
-                upSide = side;
+            maxFace = face;
+            upSide = side;
         }
         
         isRolling = false;
@@ -90,30 +125,48 @@ public class DiceScript : MonoBehaviour
     {
         if (isSelectable)
         {
+            selectDiceSound.Play();
             isSelected = !isSelected;
 
             if (isSelected)
             {
-                rend.material.color = selectedColor;
+                sparks.SetActive(false);
+                rend.material = selectedMaterial;
                 transform.localScale *= 1.2f; 
                 scoreScript._isNewDiceInBankScore = true;
                 scoreScript._selectedDices.Add(this);
             }
             else
             {
-                rend.material.color = originalColor;
+                sparks.SetActive(true);
+                rend.material = originalMaterial;
                 transform.localScale /= 1.2f;
                 scoreScript._isNewDiceInBankScore = true;
                 scoreScript._selectedDices.Remove(this);
             }
         }
     }
+    
+    void OnMouseEnter()
+    {
+        if (isSelectable)
+        {
+            mouseOverDiceSound.Play();
+        }
+        isHovered = true;
+    }
 
-    public void resetValues(){
+    void OnMouseExit()
+    {
+        isHovered = false;
+    }
+
+    public void resetValues()
+    {
         isSelectable = false;
         isScored = false;
         isSelected = false;
-        rend.material.color = originalColor;
+        rend.material = originalMaterial;
         transform.localScale = originalScale;
     }
 
