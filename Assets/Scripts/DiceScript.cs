@@ -67,6 +67,11 @@ public class DiceScript : MonoBehaviour
 
     void FixedUpdate()
     {
+        if (body.isKinematic && !isScored)
+        {
+            transform.Rotate( new Vector3(Random.Range(0, 45)* Time.deltaTime , Random.Range(0, 45) * Time.deltaTime, Random.Range(0, 45) * Time.deltaTime), Space.World);
+            
+        }
         if (isSelectable)
         {
             Vector3 targetScale = isHovered ? originalScale * scaleMultiplier : originalScale;

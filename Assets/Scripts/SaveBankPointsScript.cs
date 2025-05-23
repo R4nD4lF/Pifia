@@ -33,7 +33,12 @@ public class SaveBankPointsScript : MonoBehaviour, IPointerEnterHandler, IPointe
         scoreScript._totalScoreTMP.text = "Total Score: " + scoreScript._totalScore.ToString() + "/" + scoreScript._goalScore.ToString();
         scoreScript.ResetFullValues();
         _stayButton.SetActive(false);
-        scoreScript._fireEffect.SetActive(false);
+        scoreScript._sunEffect.SetActive(false);
+        scoreScript._bigFireEffect.SetActive(false);
+        scoreScript._mediumFireEffect.SetActive(false);
+        scoreScript._lilRfireEffect.SetActive(false);
+        scoreScript._lilLFireEffect.SetActive(false);
+        scoreScript._bankTextEffect.StopManualEffects();
     }
     
       public void OnPointerEnter(PointerEventData eventData)

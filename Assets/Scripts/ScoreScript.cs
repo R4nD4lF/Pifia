@@ -5,6 +5,7 @@ using TMPro;
 using System;
 using Unity.VisualScripting;
 using UnityEngine.Analytics;
+using EasyTextEffects;
 
 public class ScoreScript : MonoBehaviour
 {
@@ -23,7 +24,14 @@ public class ScoreScript : MonoBehaviour
 
     [SerializeField] private GameObject _stayButton;
 
-    [SerializeField] public GameObject _fireEffect;
+    [SerializeField] public GameObject _lilLFireEffect;
+    [SerializeField] public GameObject _lilRfireEffect;
+    [SerializeField] public GameObject _mediumFireEffect;
+    [SerializeField] public GameObject _bigFireEffect;
+    [SerializeField] public GameObject _sunEffect;
+    [SerializeField] public TextEffect _bankTextEffect;
+    [SerializeField] private TextEffect _centerMessageTextEffect;
+    [SerializeField] private TextEffect _totalTextEffect;
 
     Dictionary<int, int> faceCounts = new Dictionary<int, int>();
 
@@ -55,10 +63,10 @@ public class ScoreScript : MonoBehaviour
     {
         if (Input.GetButtonDown("Jump") && _selectedDices.Count == 0 && _dices.Any() && !_isPifia && round != 0)
         {
-            _centerMessageTMP.fontSize = 50;
-            _centerMessageTMP.color = Color.darkRed;
-            _centerMessageTMP.text = "You can't roll dices without scoring!";
-            _centerMessageTMP.fontSize = 200;
+            _centerMessageTMP.gameObject.SetActive(true); 
+            _centerMessageTextEffect.StartManualEffect("wiggle");
+            _centerMessageTextEffect.StartManualEffect("invalidColor");
+            _centerMessageTMP.text = "You can't roll dices without scoring!!";
         }
         else if (Input.GetButtonDown("Jump") && !_isRolling)
         {
@@ -88,7 +96,8 @@ public class ScoreScript : MonoBehaviour
                 }
                 round = 0;
             }
-            _centerMessageTMP.text = "";
+            _centerMessageTextEffect.StopAllEffects();
+            _centerMessageTMP.gameObject.SetActive(false); 
             _stayButton.SetActive(false);
             RollDices();
             round++;
@@ -158,6 +167,7 @@ public class ScoreScript : MonoBehaviour
 
     void CheckScore()
     {
+        _centerMessageTMP.gameObject.SetActive(false);
         _bankScore = 0;
         scoreCounts.Clear();
         foreach (DiceScript dice in _selectedDices)
@@ -218,15 +228,54 @@ public class ScoreScript : MonoBehaviour
         }
 
         _isNewDiceInBankScore = false;
-        if (_accumulatedBank + _bankScore >= 1000)// _goalScore / 4) Implement graduable fire increasing percent
+        _bankScoreTMP.text = "Bank Score: " + (_accumulatedBank + _bankScore).ToString();
+        Debug.Log(_bankScoreTMP.text);
+        if (_accumulatedBank + _bankScore >= _goalScore / 2)
         {
-            _fireEffect.SetActive(true);
+            _bankTextEffect.StartManualEffects();
+            _sunEffect.SetActive(true);
+            _bigFireEffect.SetActive(true);
+            _mediumFireEffect.SetActive(false);
+            _lilRfireEffect.SetActive(false);
+            _lilLFireEffect.SetActive(false);
         }
+        else if (_accumulatedBank + _bankScore >= _goalScore / 4)
+        {
+            _bankTextEffect.StartManualEffects();
+            _sunEffect.SetActive(false);
+            _bigFireEffect.SetActive(true);
+            _mediumFireEffect.SetActive(false);
+            _lilRfireEffect.SetActive(false);
+            _lilLFireEffect.SetActive(false);
+        }
+        else if (_accumulatedBank + _bankScore >= _goalScore / 8)
+        {
+
+            _sunEffect.SetActive(false);
+            _bigFireEffect.SetActive(false);
+            _mediumFireEffect.SetActive(true);
+            _lilRfireEffect.SetActive(false);
+            _lilLFireEffect.SetActive(false);
+        }
+        else if (_accumulatedBank + _bankScore >= _goalScore / 10)
+        {
+
+            _sunEffect.SetActive(false);
+            _bigFireEffect.SetActive(false);
+            _mediumFireEffect.SetActive(false);
+            _lilRfireEffect.SetActive(true);
+            _lilLFireEffect.SetActive(true);
+        }
+
         else
         {
-            _fireEffect.SetActive(false);
+            _bankTextEffect.StopManualEffects();
+            _sunEffect.SetActive(false);
+            _bigFireEffect.SetActive(false);
+            _mediumFireEffect.SetActive(false);
+            _lilRfireEffect.SetActive(false);
+            _lilLFireEffect.SetActive(false);
         }
-        _bankScoreTMP.text = "Bank Score: " + (_accumulatedBank + _bankScore).ToString();
     }
 
     void CheckPifia()
@@ -242,7 +291,10 @@ public class ScoreScript : MonoBehaviour
         }
         if (_isPifia)
         {
-            _centerMessageTMP.color = Color.darkRed;
+            _centerMessageTMP.gameObject.SetActive(true); 
+            _centerMessageTextEffect.StartManualEffect("wiggle");
+            _centerMessageTextEffect.StartManualEffect("invalidColor");
+            _bankTextEffect.StopAllEffects();
             _centerMessageTMP.text = "PIFIA";
             pifiaSound.Play();
             ResetFullValues();
@@ -260,7 +312,8 @@ public class ScoreScript : MonoBehaviour
         scoreCounts.Clear();
         _isStraight = false;
         _straightScore = 0;
-        _centerMessageTMP.text = "";
+        _centerMessageTextEffect.StopAllEffects();
+        _centerMessageTMP.gameObject.SetActive(false); 
     }
     public void ResetFullValues()
     {
@@ -271,7 +324,11 @@ public class ScoreScript : MonoBehaviour
         _accumulatedBank = 0;
         _straightScore = 0;
         _isStraight = false;
-        _fireEffect.SetActive(false);
+        _sunEffect.SetActive(false);
+        _bigFireEffect.SetActive(false);
+        _mediumFireEffect.SetActive(false);
+        _lilRfireEffect.SetActive(false);
+        _lilLFireEffect.SetActive(false);
         round = 0;
         _bankScoreTMP.text = "Bank Score: " + _accumulatedBank.ToString();
         _dices = _allDices;
@@ -330,6 +387,7 @@ public class ScoreScript : MonoBehaviour
     {
         if (_totalScore >= _goalScore)
         {
+            _centerMessageTMP.gameObject.SetActive(true); 
             _centerMessageTMP.color = _originalCenterTextColor;
             _centerMessageTMP.text = "YOU WIN!!";
             _totalScoreTMP.gameObject.SetActive(false);
