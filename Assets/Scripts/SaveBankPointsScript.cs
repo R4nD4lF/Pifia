@@ -7,6 +7,8 @@ public class SaveBankPointsScript : MonoBehaviour, IPointerEnterHandler, IPointe
     public ScoreScript scoreScript;
     [SerializeField] private GameObject _stayButton;
 
+    [SerializeField] private AudioSource clickSound;
+
     private Vector3 originalScaleButton;
     public float scaleMultiplier = 1.5f;
     public float scaleSpeed = 10f;
@@ -28,6 +30,7 @@ public class SaveBankPointsScript : MonoBehaviour, IPointerEnterHandler, IPointe
 
     public void SaveScore()
     {
+        clickSound.Play();
         scoreScript._totalScore += scoreScript._accumulatedBank + scoreScript._bankScore;
         scoreScript.checkWin();
         scoreScript._totalScoreTMP.text = "Total Score: " + scoreScript._totalScore.ToString() + "/" + scoreScript._goalScore.ToString();
